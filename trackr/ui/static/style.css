@@ -1,0 +1,104 @@
+:root {
+  --bg: #f7f7f8;
+  --fg: #1a1a1a;
+  --muted: #666;
+  --border: #ddd;
+  --accent: #3366cc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  margin: 0;
+  padding: 24px 32px 64px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+header h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.filter select {
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+th, td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+th {
+  background: #eee;
+  font-weight: 600;
+}
+
+.status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-running { background: #fff3cd; color: #856404; }
+.status-completed { background: #d4edda; color: #155724; }
+.status-failed { background: #f8d7da; color: #721c24; }
+.status-crashed { background: #f8d7da; color: #721c24; }
+
+section { margin-top: 28px; }
+section h2 { font-size: 16px; margin-bottom: 10px; }
+
+#run-meta p { margin: 4px 0; font-size: 14px; }
+
+.chart-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 10px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+.chart-label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+
+pre#config {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+#artifacts { display: flex; flex-wrap: wrap; gap: 16px; }
+.artifact-item {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+.artifact-item img {
+  max-width: 200px;
+  max-height: 150px;
+  display: block;
+  margin-bottom: 6px;
+}

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trackr"
+version = "0.1.0"
+description = "Lightweight, local-first ML experiment tracker."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+trackr = "trackr.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["trackr*"]
+
+[tool.setuptools.package-data]
+"trackr.ui" = ["static/*"]
