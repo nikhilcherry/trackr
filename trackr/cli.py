@@ -1,8 +1,9 @@
-"""trackr command-line interface: list, compare, ui, doctor."""
+"""trackr command-line interface: list, compare, rm, ui, doctor."""
 from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import time
 
@@ -108,6 +109,46 @@ def cmd_compare(args) -> None:
         conn.close()
 
 
+def cmd_rm(args) -> None:
+    store.init_schema()
+    conn = store.connect()
+    try:
+        runs = []
+        missing = []
+        for run_id in args.run_ids:
+            r = store.get_run(conn, run_id)
+            if r is None:
+                missing.append(run_id)
+            else:
+                runs.append(r)
+
+        for run_id in missing:
+            print(f"error: run not found: {run_id}", file=sys.stderr)
+
+        if not runs:
+            sys.exit(1)
+
+        if not args.yes:
+            names = ", ".join(f"{r['id']} ({r['project']}/{r['name']})" for r in runs)
+            reply = input(f"Delete {len(runs)} run(s): {names}? [y/N] ")
+            if reply.strip().lower() not in ("y", "yes"):
+                print("Aborted.")
+                return
+
+        artifacts_dir = store.get_artifacts_dir()
+        for r in runs:
+            store.delete_run(conn, r["id"])
+            run_artifacts_dir = artifacts_dir / r["id"]
+            if run_artifacts_dir.exists():
+                shutil.rmtree(run_artifacts_dir)
+            print(f"Deleted {r['id']} ({r['project']}/{r['name']})")
+
+        if missing:
+            sys.exit(1)
+    finally:
+        conn.close()
+
+
 def cmd_ui(args) -> None:
     import uvicorn
 
@@ -144,6 +185,11 @@ def main(argv=None) -> None:
     p_compare = sub.add_parser("compare", help="compare runs")
     p_compare.add_argument("run_ids", nargs="+")
     p_compare.set_defaults(func=cmd_compare)
+
+    p_rm = sub.add_parser("rm", help="delete run(s) and their artifacts")
+    p_rm.add_argument("run_ids", nargs="+")
+    p_rm.add_argument("-y", "--yes", action="store_true", help="skip confirmation prompt")
+    p_rm.set_defaults(func=cmd_rm)
 
     p_ui = sub.add_parser("ui", help="launch web UI")
     p_ui.add_argument("--host", default="127.0.0.1")

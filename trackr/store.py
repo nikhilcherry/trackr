@@ -161,6 +161,17 @@ def get_artifacts(conn, run_id: str):
     return [dict(r) for r in rows]
 
 
+def delete_run(conn, run_id: str) -> bool:
+    """Delete a run row (metrics/artifacts rows cascade via ON DELETE CASCADE).
+    Returns True if a run was actually deleted, False if run_id didn't exist.
+    Does not touch files under the artifacts directory — the caller (cli.py)
+    handles that, since store.py doesn't own filesystem cleanup elsewhere.
+    """
+    cur = conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+    conn.commit()
+    return cur.rowcount > 0
+
+
 def mark_stale_as_crashed(conn, stale_seconds: float):
     cutoff = time.time() - stale_seconds
     rows = conn.execute(

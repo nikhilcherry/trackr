@@ -162,6 +162,30 @@ def test_run_context_manager_marks_failed_on_exception():
     assert row["status"] == "failed"
 
 
+def test_delete_run_removes_row_and_cascades_metrics_and_artifacts(tmp_path):
+    src = tmp_path / "art.txt"
+    src.write_text("hello")
+    run = trackr.init(project="p1", name="run-del")
+    run.log({"loss": 1.0}, step=0)
+    run.log_artifact(str(src))
+    run.finish()
+
+    conn = store.connect()
+    deleted = store.delete_run(conn, run.run_id)
+    assert deleted is True
+    assert store.get_run(conn, run.run_id) is None
+    assert store.get_metrics(conn, run.run_id) == []
+    assert store.get_artifacts(conn, run.run_id) == []
+    conn.close()
+
+
+def test_delete_run_missing_id_returns_false():
+    store.init_schema()
+    conn = store.connect()
+    assert store.delete_run(conn, "does-not-exist") is False
+    conn.close()
+
+
 def test_run_context_manager_marks_completed_on_success():
     with trackr.init(project="p1", name="run-i") as run:
         run.log({"loss": 1.0})

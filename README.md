@@ -33,6 +33,7 @@ in the DB; see `trackr doctor` below.
 ```
 trackr list [--project NAME]        # table of runs with final metric values
 trackr compare RUN1 RUN2 ...        # side-by-side config diff + final metrics
+trackr rm RUN1 [RUN2 ...] [-y]      # delete run(s) + their artifacts (prompts unless -y/--yes)
 trackr ui [--host H] [--port P]     # launch the web UI (default 127.0.0.1:8000)
 trackr doctor [--stale-minutes N]   # mark runs with no heartbeat in N min (default 10) as "crashed"
 ```
