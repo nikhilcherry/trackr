@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -82,6 +83,28 @@ def test_log_artifact_copies_file(tmp_path):
     dest = store.get_artifacts_dir() / run.run_id / "art.txt"
     assert dest.exists()
     assert dest.read_text() == "hello"
+
+
+def test_log_artifact_same_name_twice_does_not_clobber(tmp_path):
+    src = tmp_path / "art.txt"
+    src.write_text("first")
+    run = trackr.init(project="p1", name="run-dd")
+    run.log_artifact(str(src))
+    src.write_text("second")
+    run.log_artifact(str(src))
+    run.finish()
+
+    conn = store.connect()
+    artifacts = store.get_artifacts(conn, run.run_id)
+    conn.close()
+
+    assert len(artifacts) == 2
+    paths = [Path(a["path"]) for a in artifacts]
+    assert paths[0] != paths[1]
+    assert paths[0].exists() and paths[1].exists()
+    assert paths[0].read_text() == "first"
+    assert paths[1].read_text() == "second"
+    assert all(a["original_name"] == "art.txt" for a in artifacts)
 
 
 def test_log_artifact_missing_file_raises():

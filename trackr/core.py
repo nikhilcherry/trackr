@@ -68,6 +68,14 @@ class Run:
         run_dir = self._artifacts_dir / self.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         dest = run_dir / src.name
+        if dest.exists():
+            # Same filename logged twice in one run: don't silently clobber
+            # the earlier artifact on disk while its DB row still points here.
+            stem, suffix = src.stem, src.suffix
+            n = 2
+            while dest.exists():
+                dest = run_dir / f"{stem}-{n}{suffix}"
+                n += 1
         shutil.copy2(src, dest)
         conn = store.connect(self._db_path)
         try:
