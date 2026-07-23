@@ -61,9 +61,19 @@ def create_app() -> FastAPI:
 
     @app.get("/api/artifacts/{run_id}/{filename}")
     def api_get_artifact_file(run_id: str, filename: str):
-        artifacts_dir = (store.get_artifacts_dir() / run_id).resolve()
-        path = (artifacts_dir / filename).resolve()
-        if artifacts_dir not in path.parents or not path.exists():
+        # The containment check must be against a FIXED boundary that
+        # never incorporates attacker-controlled input. The previous
+        # version resolved run_id into artifacts_dir first (`get_artifacts_dir()
+        # / run_id`), so a run_id of ".." (URL-encoded as %2e%2e -- a
+        # single path segment, no literal "/", so it passes routing) moved
+        # artifacts_dir itself up to TRACKR_DIR before the check ever ran,
+        # making the check compare against a boundary the attacker had
+        # already relocated. That leaked arbitrary files under TRACKR_DIR,
+        # including trackr.db itself, via e.g.
+        # GET /api/artifacts/%2e%2e/trackr.db.
+        base_dir = store.get_artifacts_dir().resolve()
+        path = (base_dir / run_id / filename).resolve()
+        if base_dir not in path.parents or not path.exists():
             raise HTTPException(status_code=404, detail="artifact not found")
         return FileResponse(str(path))
 
