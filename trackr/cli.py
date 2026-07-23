@@ -130,7 +130,13 @@ def cmd_rm(args) -> None:
 
         if not args.yes:
             names = ", ".join(f"{r['id']} ({r['project']}/{r['name']})" for r in runs)
-            reply = input(f"Delete {len(runs)} run(s): {names}? [y/N] ")
+            try:
+                reply = input(f"Delete {len(runs)} run(s): {names}? [y/N] ")
+            except EOFError:
+                # No stdin to read from (CI, cron, a piped/non-interactive
+                # invocation without -y): treat like a "no" rather than
+                # crashing with a raw traceback.
+                reply = ""
             if reply.strip().lower() not in ("y", "yes"):
                 print("Aborted.")
                 return
@@ -201,7 +207,11 @@ def main(argv=None) -> None:
     p_doctor.set_defaults(func=cmd_doctor)
 
     args = parser.parse_args(argv)
-    args.func(args)
+    try:
+        args.func(args)
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
