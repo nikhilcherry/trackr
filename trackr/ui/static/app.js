@@ -107,7 +107,12 @@ async function renderRunDetail() {
   }
   const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
   for (const a of artifacts) {
-    const url = `/api/artifacts/${encodeURIComponent(run.id)}/${encodeURIComponent(a.original_name)}`;
+    // The URL must reference the actual on-disk filename (path's basename,
+    // which trackr disambiguates per-artifact so repeated log_artifact()
+    // calls with the same original_name don't collide) -- not
+    // original_name, which two rows can legitimately share.
+    const onDiskName = a.path.split('/').pop();
+    const url = `/api/artifacts/${encodeURIComponent(run.id)}/${encodeURIComponent(onDiskName)}`;
     const item = document.createElement('div');
     item.className = 'artifact-item';
     const isImage = imageExts.some(ext => a.original_name.toLowerCase().endsWith(ext));

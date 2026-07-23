@@ -1,5 +1,6 @@
 import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -79,15 +80,36 @@ def test_log_artifact_copies_file(tmp_path):
 
     assert len(artifacts) == 1
     assert artifacts[0]["original_name"] == "art.txt"
-    dest = store.get_artifacts_dir() / run.run_id / "art.txt"
+    dest = Path(artifacts[0]["path"])
     assert dest.exists()
     assert dest.read_text() == "hello"
+    assert dest.parent == store.get_artifacts_dir() / run.run_id
 
 
 def test_log_artifact_missing_file_raises():
     run = trackr.init(project="p1", name="run-e")
     with pytest.raises(FileNotFoundError):
         run.log_artifact("/no/such/file.txt")
+
+
+def test_log_artifact_same_name_twice_keeps_both_versions(tmp_path):
+    src = tmp_path / "checkpoint.pt"
+    src.write_text("v1")
+    run = trackr.init(project="p1", name="run-checkpoint")
+    run.log_artifact(str(src))
+    src.write_text("v2")
+    run.log_artifact(str(src))
+    run.finish()
+
+    conn = store.connect()
+    artifacts = store.get_artifacts(conn, run.run_id)
+    conn.close()
+
+    assert len(artifacts) == 2
+    assert all(a["original_name"] == "checkpoint.pt" for a in artifacts)
+    paths = [Path(a["path"]) for a in artifacts]
+    assert paths[0] != paths[1]
+    assert {p.read_text() for p in paths} == {"v1", "v2"}
 
 
 def test_list_runs_by_project():

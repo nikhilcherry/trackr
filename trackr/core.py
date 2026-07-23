@@ -40,6 +40,7 @@ class Run:
         self._db_path = db_path
         self._artifacts_dir = artifacts_dir
         self._step_counter = 0
+        self._artifact_counter = 0
         self._finished = False
 
     def log(self, metrics: Dict[str, Any], step: Optional[int] = None) -> None:
@@ -67,7 +68,14 @@ class Run:
             raise FileNotFoundError(f"artifact not found: {path}")
         run_dir = self._artifacts_dir / self.run_id
         run_dir.mkdir(parents=True, exist_ok=True)
-        dest = run_dir / src.name
+        # Disambiguate repeated log_artifact(same filename) calls (e.g. a
+        # checkpoint re-saved every N steps under a fixed name): without a
+        # unique on-disk name, each call would silently overwrite the
+        # previous copy while the artifacts table kept accumulating rows
+        # that all pointed at the same (now-latest-only) file. original_name
+        # still carries the true filename for display/download.
+        dest = run_dir / f"{self._artifact_counter:04d}_{src.name}"
+        self._artifact_counter += 1
         shutil.copy2(src, dest)
         conn = store.connect(self._db_path)
         try:
