@@ -40,11 +40,13 @@ def test_mark_stale_as_crashed_marks_only_old_heartbeats():
     conn.close()
 
 
-@pytest.mark.parametrize("bad_stale_seconds", [0, -600])
+@pytest.mark.parametrize("bad_stale_seconds", [0, -600, float("nan")])
 def test_mark_stale_as_crashed_rejects_non_positive_seconds(bad_stale_seconds):
     # A non-positive value pushes the cutoff to now-or-later, which would
     # match (and incorrectly crash) every currently *healthy* running run,
     # not just stale ones -- must fail loud instead of corrupting status.
+    # NaN compares False to both `> 0` and `<= 0`, so a naive `<= 0` guard
+    # would silently let it through to a no-op instead of a clear error.
     run = trackr.init(project="p1", name="healthy-run")
     run.log({"loss": 0.5})  # touches heartbeat to "now"
 
