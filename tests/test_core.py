@@ -67,6 +67,41 @@ def test_log_after_finish_raises():
         run.log({"loss": 1.0})
 
 
+def test_log_nan_metric_raises_clean_value_error_instead_of_crashing():
+    # sqlite3 silently turns a NaN float parameter into SQL NULL, which
+    # then trips the metrics.value NOT NULL constraint with a confusing
+    # IntegrityError -- log() must catch this itself and fail clearly.
+    # NaN loss/metrics are an extremely common ML failure mode (divergent
+    # training), so this needs to fail predictably, not crash obscurely.
+    run = trackr.init(project="p1", name="run-nan")
+    with pytest.raises(ValueError, match="NaN"):
+        run.log({"loss": float("nan")})
+
+
+def test_log_inf_metric_succeeds():
+    # Unlike NaN, +/-inf has a real REAL representation in sqlite and
+    # must keep working.
+    run = trackr.init(project="p1", name="run-inf")
+    run.log({"grad_norm": float("inf")})
+    run.finish()
+
+    conn = store.connect()
+    metrics = store.get_metrics(conn, run.run_id)
+    conn.close()
+    assert metrics[0]["value"] == float("inf")
+
+
+def test_log_nan_metric_does_not_partially_write_other_metrics_in_same_call():
+    run = trackr.init(project="p1", name="run-partial")
+    with pytest.raises(ValueError, match="NaN"):
+        run.log({"acc": 0.5, "loss": float("nan")})
+
+    conn = store.connect()
+    metrics = store.get_metrics(conn, run.run_id)
+    conn.close()
+    assert metrics == []
+
+
 def test_log_artifact_copies_file(tmp_path):
     src = tmp_path / "art.txt"
     src.write_text("hello")

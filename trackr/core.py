@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 import subprocess
 import time
@@ -51,10 +52,28 @@ class Run:
         else:
             self._step_counter = step + 1
         timestamp = time.time()
+        checked = {}
+        for key, value in metrics.items():
+            fval = float(value)
+            if math.isnan(fval):
+                # sqlite3's C binding silently turns a NaN float parameter
+                # into SQL NULL (no stable on-disk REAL representation for
+                # NaN), which then trips the metrics.value NOT NULL
+                # constraint -- surface a clear error at the API boundary
+                # instead of a confusing IntegrityError from inside
+                # store.insert_metric. (float('inf') has a real REAL
+                # representation and stores fine.)
+                raise ValueError(
+                    f"metric {key!r} is NaN, which trackr's sqlite backend "
+                    "cannot store (filter it out before calling log(), or "
+                    "log a sentinel value instead)"
+                )
+            checked[key] = fval
+
         conn = store.connect(self._db_path)
         try:
-            for key, value in metrics.items():
-                store.insert_metric(conn, self.run_id, key, float(value), step, timestamp)
+            for key, fval in checked.items():
+                store.insert_metric(conn, self.run_id, key, fval, step, timestamp)
             store.touch_heartbeat(conn, self.run_id, timestamp)
         finally:
             conn.close()
