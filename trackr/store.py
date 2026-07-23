@@ -173,6 +173,11 @@ def delete_run(conn, run_id: str) -> bool:
 
 
 def mark_stale_as_crashed(conn, stale_seconds: float):
+    if stale_seconds <= 0:
+        # A non-positive value pushes the cutoff to now-or-later, matching
+        # (and marking crashed) every currently *healthy* running run --
+        # the opposite of "stale". Fail loud instead of corrupting status.
+        raise ValueError(f"stale_seconds must be positive, got {stale_seconds}")
     cutoff = time.time() - stale_seconds
     rows = conn.execute(
         "SELECT id FROM runs WHERE status = 'running' AND heartbeat < ?", (cutoff,)

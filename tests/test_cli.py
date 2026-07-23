@@ -98,6 +98,20 @@ def test_rm_without_yes_treats_eof_as_abort(tmp_path, monkeypatch, capsys):
     assert "Aborted." in capsys.readouterr().out
 
 
+def test_doctor_rejects_negative_stale_minutes(tmp_path, capsys):
+    run = trackr.init(project="p1", name="healthy-run")
+    run.log({"loss": 0.5})  # touches heartbeat to "now"; run stays "running"
+
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(["doctor", "--stale-minutes", "-10"])
+    assert exc_info.value.code != 0
+    assert "stale_seconds must be positive" in capsys.readouterr().err
+
+    conn = store.connect()
+    assert store.get_run(conn, run.run_id)["status"] == "running"
+    conn.close()
+
+
 def test_main_prints_clean_error_instead_of_raw_traceback(monkeypatch, capsys):
     def _boom(_conn, project=None):
         raise RuntimeError("simulated store failure")
