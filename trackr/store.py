@@ -27,9 +27,16 @@ def get_artifacts_dir() -> Path:
 
 def connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     db_path = db_path or get_db_path()
-    conn = sqlite3.connect(str(db_path))
+    # timeout: how long a writer waits on lock contention before raising
+    # "database is locked" -- trackr's own core use case is a live web
+    # dashboard reading while a training script logs concurrently, and
+    # the default rollback-journal mode blocks readers against writers
+    # (WAL lets them proceed independently, same as flowr's and batchr's
+    # own SQLite stores, which face the same multi-process access pattern).
+    conn = sqlite3.connect(str(db_path), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 
